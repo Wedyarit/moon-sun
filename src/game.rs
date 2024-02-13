@@ -1,12 +1,13 @@
 use std::fmt::Alignment;
 
 use ggez::mint::Point2;
+use ggez::timer;
 use ggez::{graphics, Context, GameResult, event::EventHandler};
-use ggez::graphics::{Color as GgezColor, Drawable, Text, TextFragment};
+use ggez::graphics::{Color, Drawable, Text, TextFragment};
 use nalgebra::Vector2;
 use rand::Rng;
 
-use crate::utils::count_objects;
+use crate::utils::{count_objects, lerp_color};
 use crate::object::{Object, Team, ObjectKind};
 use crate::formatter::format_squares_numbers;
 
@@ -33,6 +34,11 @@ pub struct Game {
     squares: Vec<Object>,
     sun_circle: Object,
     moon_circle: Object,
+
+    background_color: Color,
+    target_background_color: Color,
+    transition_duration: f32,
+    transition_timer: f32,
 }
 
 impl Game {
@@ -55,6 +61,11 @@ impl Game {
         let field_start_y: f32 = (window_height - game_constants::FIELD_HEIGHT) / 2.0;
 
         let bounds = (field_start_x, field_start_y);
+
+        let background_color = Color::from_rgb(0xF7, 0xC5, 0x9F);
+        let target_background_color = Color::from_rgb(0x2A, 0x32, 0x4B); 
+        let transition_duration = 2.0; 
+        let transition_timer = 0.0; 
 
         let moon_circle = Object {
             position: moon_pos,
@@ -130,25 +141,33 @@ impl Game {
             squares,
             sun_circle,
             moon_circle,
+
+            background_color,
+            target_background_color,
+            transition_duration,
+            transition_timer,
         }
     }
 
-    fn scale_position(&self, position: (f32, f32)) -> (f32, f32) {
-        (position.0 * self.scale_factor, position.1 * self.scale_factor)
+    fn update_background_color(&mut self, dt: f32) {
+        if self.transition_timer < self.transition_duration {
+            self.transition_timer += dt;
+            let t = self.transition_timer / self.transition_duration;
+            self.background_color = lerp_color(self.background_color, self.target_background_color, t);
+        }
     }
 
-    fn scale_vector(&self, vector: Vector2<f32>) -> Vector2<f32> {
-        Vector2::new(vector.x * self.scale_factor, vector.y * self.scale_factor)
+    fn set_target_background_color(&mut self, target_color: Color, duration: f32) {
+        self.target_background_color = target_color;
+        self.transition_duration = duration;
+        self.transition_timer = 0.0;
     }
 }
 
 impl EventHandler for Game {
-    fn update(&mut self, _: &mut Context) -> GameResult {
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
         self.sun_circle.update_position();
         self.moon_circle.update_position();
-
-        // println!("MOON POS: x: {} y: {}", self.moon_circle.position.0, self.moon_circle.position.1);
-        // println!("SUN POS: x: {} y: {}", self.sun_circle.position.0, self.sun_circle.position.1);
 
         self.sun_circle.handle_boundary_collision(self.bounds);
         self.moon_circle.handle_boundary_collision(self.bounds);
@@ -158,22 +177,40 @@ impl EventHandler for Game {
             self.moon_circle.handle_collision(square);
         }
 
+        let dt = ctx.time.delta().as_secs_f32();
+        self.update_background_color(dt);
+        
         Ok(())
     }
-    // TODO fix this MF
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let canvas_color = GgezColor::from_rgb_u32(0x767B91);
-        let mut canvas = graphics::Canvas::from_frame(ctx, canvas_color);
 
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        let captured = count_objects(&self.squares, Team::MOON);
+
+        let max_cells = game_constants::ROW_SIZE * game_constants::COLUMN_SIZE;
+
+        let darkness_level = captured as f32 / max_cells as f32;
+
+        let start_color = [0xF7, 0xC5, 0x9F];
+        let end_color = [0x2A, 0x32, 0x4B];
+
+        let interpolated_color = [
+        (start_color[0] as f32 + (end_color[0] as f32 - start_color[0] as f32) * darkness_level) as u8,
+        (start_color[1] as f32 + (end_color[1] as f32 - start_color[1] as f32) * darkness_level) as u8,
+        (start_color[2] as f32 + (end_color[2] as f32 - start_color[2] as f32) * darkness_level) as u8,
+        ];
+    
+        let canvas_color = Color::from_rgb(interpolated_color[0], interpolated_color[1], interpolated_color[2]);
+
+        let mut canvas = graphics::Canvas::from_frame(ctx, canvas_color);
+    
         for i in 0..self.squares.len() {
             self.squares[i].draw(ctx, &mut canvas)?;
         }
-
-
+    
         self.sun_circle.draw(ctx, &mut canvas)?;
         self.moon_circle.draw(ctx, &mut canvas)?;
-
-        let font_color = GgezColor::from_rgb_u32(0xE1E5EE); 
+    
+        let font_color = Color::from_rgb_u32(0xE1E5EE); 
         let text_fragment = TextFragment::new(format_squares_numbers(count_objects(&self.squares, Team::MOON), count_objects(&self.squares, Team::SUN)))
             .font("LiberationMono")
             .scale(40.0 * self.scale_factor)
@@ -187,14 +224,11 @@ impl EventHandler for Game {
         
         let dest_point = ggez::glam::Vec2::new(x, y);
         
-        canvas.draw(
-            &text,
-            dest_point,
-        );
-
-
+        canvas.draw(&text, dest_point);
+    
         canvas.finish(ctx)?;
-
+    
         Ok(())
     }
+    
 }
