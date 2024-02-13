@@ -19,8 +19,8 @@ fn main() {
 
     let result = ContextBuilder::new("Moon & Sun", "wedyarit")
             .window_mode(conf::WindowMode::default()
-                .maximized(true)
-                .resizable(false))
+                .dimensions(800.0, 800.0)
+                .resizable(true))
             .add_resource_path(resource_dir)
             .window_setup(conf::WindowSetup::default()
                 .title("Moon & Sun")

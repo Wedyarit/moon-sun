@@ -21,12 +21,13 @@ pub struct Object {
     pub team: Team,
     pub kind: ObjectKind,
     pub direction: Vector2<f32>,
+    pub scale: f32
 }
 
 impl Object {
     pub fn update_position(&mut self) {
-        self.position.0 += self.direction.x;
-        self.position.1 += self.direction.y;
+        self.position.0 += self.direction.x * self.scale;
+        self.position.1 += self.direction.y * self.scale;
     }
 
     pub fn toggle_team(&mut self) {
@@ -46,7 +47,7 @@ impl Object {
     pub fn handle_collision(&mut self, other: &mut Object) {
         let is_intersecting = self.intersects(other);
         if is_intersecting && self.team == other.team {
-            let normal = Vector2::new(other.position.0 - self.position.0, other.position.1 - self.position.1).normalize();
+            let normal = Vector2::new(other.position.0 * other.scale - self.position.0 * self.scale, other.position.1 * other.scale - self.position.1 * self.scale).normalize();
             self.direction = self.direction - 2.0 * self.direction.dot(&normal) * normal;
             other.toggle_team();
         }
@@ -111,8 +112,8 @@ impl Object {
         let circle = graphics::Mesh::new_circle(
             ctx,
             graphics::DrawMode::fill(),
-            Vec2::new(self.position.0, self.position.1), 
-            game_constants::CIRCLE_SIZE,
+            Vec2::new(self.position.0 * self.scale, self.position.1 * self.scale), 
+            game_constants::CIRCLE_SIZE * self.scale,
             0.1,
             self.get_color(),
         )?;
@@ -125,7 +126,7 @@ impl Object {
         let rect = graphics::Mesh::new_rectangle(
             ctx,
             graphics::DrawMode::fill(),
-            graphics::Rect::new(self.position.0, self.position.1, game_constants::SQUARE_SIZE, game_constants::SQUARE_SIZE),
+            graphics::Rect::new(self.position.0 * self.scale, self.position.1 * self.scale, game_constants::SQUARE_SIZE * self.scale, game_constants::SQUARE_SIZE * self.scale),
             self.get_color(),
         )?;
         canvas.draw(&rect, Vec2::new(0.0, 0.0)); 

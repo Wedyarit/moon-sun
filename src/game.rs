@@ -1,9 +1,5 @@
-use std::fmt::Alignment;
-
-use ggez::mint::Point2;
-use ggez::timer;
 use ggez::{graphics, Context, GameResult, event::EventHandler};
-use ggez::graphics::{Color, Drawable, Text, TextFragment};
+use ggez::graphics::{Color, Text, TextFragment};
 use nalgebra::Vector2;
 use rand::Rng;
 
@@ -57,8 +53,8 @@ impl Game {
         let moon_pos = (window_width * 0.7, window_height * 0.6);
         let sun_pos = (window_width * 0.35, window_height * 0.6);
 
-        let field_start_x: f32 = (window_width - game_constants::FIELD_WIDTH) / 2.0;
-        let field_start_y: f32 = (window_height - game_constants::FIELD_HEIGHT) / 2.0;
+        let field_start_x: f32 = (window_width - game_constants::FIELD_WIDTH * scale_factor) / 2.0;
+        let field_start_y: f32 = (window_height - game_constants::FIELD_HEIGHT * scale_factor) / 2.0;
 
         let bounds = (field_start_x, field_start_y);
 
@@ -75,7 +71,7 @@ impl Game {
                 moon_x_sign * 1.5 * game_constants::MOVEMENT_SPEED,
                 moon_y_sign * 1.5 * game_constants::MOVEMENT_SPEED
             ),
-        
+            scale: scale_factor
         };
 
         let sun_circle = Object {
@@ -86,6 +82,7 @@ impl Game {
                 sun_x_sign * 1.5 * game_constants::MOVEMENT_SPEED,
                 sun_y_sign * 1.5 * game_constants::MOVEMENT_SPEED
             ),
+            scale: scale_factor
         
         };
 
@@ -102,7 +99,7 @@ impl Game {
                     team: Team::MOON,
                     kind: ObjectKind::Square,
                     direction: Vector2::new(0.0, 0.0),
-                
+                    scale: scale_factor
                 });
             }
         }
@@ -117,7 +114,7 @@ impl Game {
                     team: Team::SUN,
                     kind: ObjectKind::Square,
                     direction: Vector2::new(0.0, 0.0),
-                
+                    scale: scale_factor
                 });
             }
         }
@@ -156,12 +153,6 @@ impl Game {
             self.background_color = lerp_color(self.background_color, self.target_background_color, t);
         }
     }
-
-    fn set_target_background_color(&mut self, target_color: Color, duration: f32) {
-        self.target_background_color = target_color;
-        self.transition_duration = duration;
-        self.transition_timer = 0.0;
-    }
 }
 
 impl EventHandler for Game {
@@ -184,6 +175,17 @@ impl EventHandler for Game {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        let (window_width, window_height) = ctx.gfx.drawable_size();
+        let scale_factor_width = window_width / game_constants::FIELD_WIDTH;
+        let scale_factor_height = window_height / game_constants::FIELD_HEIGHT;
+
+        self.scale_factor = scale_factor_width.min(scale_factor_height);
+
+        let field_start_x = (window_width - game_constants::FIELD_WIDTH * self.scale_factor) / 2.0;
+        let field_start_y = (window_height - game_constants::FIELD_HEIGHT * self.scale_factor) / 2.0;
+        
+        self.bounds = (field_start_x, field_start_y);
+
         let captured = count_objects(&self.squares, Team::MOON);
 
         let max_cells = game_constants::ROW_SIZE * game_constants::COLUMN_SIZE;
@@ -202,11 +204,19 @@ impl EventHandler for Game {
         let canvas_color = Color::from_rgb(interpolated_color[0], interpolated_color[1], interpolated_color[2]);
 
         let mut canvas = graphics::Canvas::from_frame(ctx, canvas_color);
+
+        for square in &mut self.squares {
+            square.scale = self.scale_factor;
+        }
     
         for i in 0..self.squares.len() {
             self.squares[i].draw(ctx, &mut canvas)?;
         }
+
+        self.sun_circle.scale = self.scale_factor;
+        self.moon_circle.scale = self.scale_factor;
     
+      
         self.sun_circle.draw(ctx, &mut canvas)?;
         self.moon_circle.draw(ctx, &mut canvas)?;
     
