@@ -1,0 +1,30 @@
+name: Rust Build and Publish Artifacts
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Build project
+      run: cargo build --release
+
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: artifacts
+        path: target/release/moon-sun
