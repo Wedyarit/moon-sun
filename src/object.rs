@@ -3,7 +3,7 @@ use ggez::{Context, GameResult};
 use ggez::glam::*;
 use nalgebra::Vector2;
 
-use crate::game::{game_constants};
+use crate::game::game_constants;
 
 pub enum ObjectKind {
     Circle,
@@ -52,15 +52,15 @@ impl Object {
         }
     }
 
-    pub fn handle_boundary_collision(&mut self) {
+    pub fn handle_boundary_collision(&mut self, bounds: (f32, f32)) {
             let (mut x, mut y) = self.position;
 
-            if x - game_constants::CIRCLE_SIZE <= game_constants::FIELD_START_X || x + game_constants::CIRCLE_SIZE >= game_constants::FIELD_START_X + game_constants::FIELD_WIDTH {
+            if x - game_constants::CIRCLE_SIZE <= bounds.0 || x + game_constants::CIRCLE_SIZE >= bounds.0 + game_constants::FIELD_WIDTH {
                 self.direction.x *= -1.0;
                 x += self.direction.x; 
             }
 
-            if y - game_constants::CIRCLE_SIZE <= game_constants::FIELD_START_Y || y + game_constants::CIRCLE_SIZE >= game_constants::FIELD_START_Y + game_constants::FIELD_HEIGHT {
+            if y - game_constants::CIRCLE_SIZE <= bounds.1 || y + game_constants::CIRCLE_SIZE >= bounds.1 + game_constants::FIELD_HEIGHT {
                 self.direction.y *= -1.0;
                 y += self.direction.y;
             }
