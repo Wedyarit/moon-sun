@@ -1,9 +1,10 @@
+
 use ggez::{graphics, Context, GameResult, event::EventHandler};
 use ggez::graphics::{Color, Text, TextFragment};
 use nalgebra::Vector2;
 use rand::Rng;
 
-use crate::utils::{count_objects, lerp_color};
+use crate::utils::count_objects;
 use crate::object::{Object, Team, ObjectKind};
 use crate::formatter::format_squares_numbers;
 
@@ -30,11 +31,6 @@ pub struct Game {
     squares: Vec<Object>,
     sun_circle: Object,
     moon_circle: Object,
-
-    background_color: Color,
-    target_background_color: Color,
-    transition_duration: f32,
-    transition_timer: f32,
 }
 
 impl Game {
@@ -57,11 +53,6 @@ impl Game {
         let field_start_y: f32 = (window_height - game_constants::FIELD_HEIGHT * scale_factor) / 2.0;
 
         let bounds = (field_start_x, field_start_y);
-
-        let background_color = Color::from_rgb(0xF7, 0xC5, 0x9F);
-        let target_background_color = Color::from_rgb(0x2A, 0x32, 0x4B); 
-        let transition_duration = 2.0; 
-        let transition_timer = 0.0; 
 
         let moon_circle = Object {
             position: moon_pos,
@@ -138,25 +129,12 @@ impl Game {
             squares,
             sun_circle,
             moon_circle,
-
-            background_color,
-            target_background_color,
-            transition_duration,
-            transition_timer,
-        }
-    }
-
-    fn update_background_color(&mut self, dt: f32) {
-        if self.transition_timer < self.transition_duration {
-            self.transition_timer += dt;
-            let t = self.transition_timer / self.transition_duration;
-            self.background_color = lerp_color(self.background_color, self.target_background_color, t);
         }
     }
 }
 
 impl EventHandler for Game {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
         self.sun_circle.update_position();
         self.moon_circle.update_position();
 
@@ -164,28 +142,15 @@ impl EventHandler for Game {
         self.moon_circle.handle_boundary_collision(self.bounds);
 
         for square in &mut self.squares {
+
             self.sun_circle.handle_collision(square);
             self.moon_circle.handle_collision(square);
         }
-
-        let dt = ctx.time.delta().as_secs_f32();
-        self.update_background_color(dt);
         
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let (window_width, window_height) = ctx.gfx.drawable_size();
-        let scale_factor_width = window_width / game_constants::FIELD_WIDTH;
-        let scale_factor_height = window_height / game_constants::FIELD_HEIGHT;
-
-        self.scale_factor = scale_factor_width.min(scale_factor_height);
-
-        let field_start_x = (window_width - game_constants::FIELD_WIDTH * self.scale_factor) / 2.0;
-        let field_start_y = (window_height - game_constants::FIELD_HEIGHT * self.scale_factor) / 2.0;
-        
-        self.bounds = (field_start_x, field_start_y);
-
         let captured = count_objects(&self.squares, Team::MOON);
 
         let max_cells = game_constants::ROW_SIZE * game_constants::COLUMN_SIZE;
@@ -205,18 +170,10 @@ impl EventHandler for Game {
 
         let mut canvas = graphics::Canvas::from_frame(ctx, canvas_color);
 
-        for square in &mut self.squares {
-            square.scale = self.scale_factor;
-        }
-    
         for i in 0..self.squares.len() {
             self.squares[i].draw(ctx, &mut canvas)?;
         }
-
-        self.sun_circle.scale = self.scale_factor;
-        self.moon_circle.scale = self.scale_factor;
     
-      
         self.sun_circle.draw(ctx, &mut canvas)?;
         self.moon_circle.draw(ctx, &mut canvas)?;
     
@@ -238,6 +195,37 @@ impl EventHandler for Game {
     
         canvas.finish(ctx)?;
     
+        Ok(())
+    }
+
+    fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) -> GameResult {
+        self.window_width = width;
+        self.window_height = height;
+        let ratio = width.min(height);
+
+        // Квадра-костыли. Есть идея получше, но я иду смотреть на лесорубов
+        if width != height {
+            ctx.gfx.set_drawable_size(ratio, ratio)?;
+        }
+
+        let scale_factor_width = width / game_constants::FIELD_WIDTH;
+        let scale_factor_height = height / game_constants::FIELD_HEIGHT;
+        self.scale_factor = scale_factor_width.min(scale_factor_height);
+
+        let field_size = game_constants::FIELD_WIDTH.min(game_constants::FIELD_HEIGHT);
+        let field_start_x = (width - field_size * self.scale_factor) / 2.0;
+        let field_start_y = (height - field_size * self.scale_factor) / 2.0;
+
+        self.bounds = (field_start_x, field_start_y);
+
+
+        for square in &mut self.squares {
+            square.scale = self.scale_factor;
+        }
+
+        self.sun_circle.scale = self.scale_factor;
+        self.moon_circle.scale = self.scale_factor;
+
         Ok(())
     }
     
