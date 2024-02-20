@@ -18,9 +18,13 @@ fn main() {
     };
 
     let result = ContextBuilder::new("Moon & Sun", "wedyarit")
-            .window_mode(conf::WindowMode::default().dimensions(1280.0, 1280.0))
+            .window_mode(conf::WindowMode::default()
+                .dimensions(800.0, 800.0)
+                .resizable(true))
             .add_resource_path(resource_dir)
-            .window_setup(conf::WindowSetup::default().title("Moon & Sun").icon("/icon.png"))
+            .window_setup(conf::WindowSetup::default()
+                .title("Moon & Sun")
+                .icon("/icon.png"))
             .build();
     let (mut ctx, event_loop) = match result {
         Ok((ctx, event_loop)) => (ctx, event_loop),
