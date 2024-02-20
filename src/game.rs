@@ -27,6 +27,7 @@ pub struct Game {
     window_height: f32,
     scale_factor: f32,
     bounds: (f32, f32),
+    prev_window_size: (f32, f32),
 
     squares: Vec<Object>,
     sun_circle: Object,
@@ -36,6 +37,7 @@ pub struct Game {
 impl Game {
     pub fn new(ctx: &mut Context) -> Self {
         let (window_width, window_height) = ctx.gfx.drawable_size();
+        let prev_window_size = (window_width, window_height);
         let scale_factor = window_width / game_constants::FIELD_WIDTH;
 
         let mut rng = rand::thread_rng();
@@ -125,6 +127,7 @@ impl Game {
             window_width,
             scale_factor,
             bounds,
+            prev_window_size,
 
             squares,
             sun_circle,
@@ -135,8 +138,8 @@ impl Game {
 
 impl EventHandler for Game {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        self.sun_circle.update_position();
-        self.moon_circle.update_position();
+        self.sun_circle.update_position(self.scale_factor);
+        self.moon_circle.update_position(self.scale_factor);
 
         self.sun_circle.handle_boundary_collision(self.bounds);
         self.moon_circle.handle_boundary_collision(self.bounds);
@@ -201,12 +204,20 @@ impl EventHandler for Game {
     fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) -> GameResult {
         self.window_width = width;
         self.window_height = height;
-        let ratio = width.min(height);
 
-        // Квадра-костыли. Есть идея получше, но я иду смотреть на лесорубов
         if width != height {
-            ctx.gfx.set_drawable_size(ratio, ratio)?;
+            let (prev_width, prev_height) = self.prev_window_size;
+            if width > prev_width || width < prev_width {
+                ctx.gfx.set_drawable_size(width, width)?;
+            } 
+
+            if height > prev_height || height < prev_height {
+                ctx.gfx.set_drawable_size(height, height)?;
+            } 
         }
+
+        self.prev_window_size = (width, height);
+
 
         let scale_factor_width = width / game_constants::FIELD_WIDTH;
         let scale_factor_height = height / game_constants::FIELD_HEIGHT;

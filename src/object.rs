@@ -25,10 +25,12 @@ pub struct Object {
 }
 
 impl Object {
-    pub fn update_position(&mut self) {
-        self.position.0 += self.direction.x * self.scale;
-        self.position.1 += self.direction.y * self.scale;
+    pub fn update_position(&mut self, prev_scale: f32) {
+        let scale_factor = self.scale / prev_scale;
+        self.position.0 += self.direction.x * scale_factor;
+        self.position.1 += self.direction.y * scale_factor;
     }
+
 
     pub fn toggle_team(&mut self) {
         self.team = match self.team {
